@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Block Blast</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      font-family: 'Segoe UI', sans-serif;
+      color: #fff;
+      padding: 16px;
+      user-select: none;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+      color: #f0c040;
+      text-shadow: 0 0 12px #f0c04088;
+    }
+
+    #header {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      margin-bottom: 12px;
+      background: #16213e;
+      border-radius: 16px;
+      padding: 10px 24px;
+      box-shadow: 0 2px 16px #0006;
+      width: 100%;
+      max-width: 420px;
+      justify-content: space-between;
+    }
+
+    .stat-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .stat-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #aaa;
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #f0c040;
+    }
+
+    #progress-bar-wrap {
+      width: 100%;
+      max-width: 420px;
+      background: #16213e;
+      border-radius: 8px;
+      height: 18px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      box-shadow: inset 0 2px 6px #0006;
+    }
+
+    #progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #f0c040, #ff6b35);
+      border-radius: 8px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    #board-wrap {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 32px #0009;
+      border: 2px solid #2d3561;
+    }
+
+    #board {
+      display: grid;
+      gap: 3px;
+      background: #0f3460;
+      padding: 3px;
+    }
+
+    .cell {
+      width: 40px;
+      height: 40px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: transform 0.1s, filter 0.1s;
+      position: relative;
+    }
+
+    .cell:hover {
+      transform: scale(1.08);
+      filter: brightness(1.3);
+    }
+
+    .cell.empty {
+      background: #16213e;
+      cursor: default;
+    }
+
+    .cell.selected {
+      transform: scale(1.12);
+      filter: brightness(1.5);
+      outline: 2px solid #fff;
+      z-index: 2;
+    }
+
+    .cell.matched {
+      animation: pop 0.3s ease forwards;
+    }
+
+    @keyframes pop {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.3); opacity: 0.7; }
+      100% { transform: scale(0); opacity: 0; }
+    }
+
+    #pieces-area {
+      display: flex;
+      gap: 16px;
+      margin-top: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .piece-container {
+      background: #16213e;
+      border-radius: 12px;
+      padding: 10px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 2px 8px #0005;
+      border: 2px solid transparent;
+    }
+
+    .piece-container:hover {
+      transform: scale(1.08);
+      box-shadow: 0 4px 16px #0008;
+    }
+
+    .piece-container.selected-piece {
+      border-color: #f0c040;
+      box-shadow: 0 0 16px #f0c04066;
+    }
+
+    .piece-container.used {
+      opacity: 0.25;
+      pointer-events: none;
+    }
+
+    .piece-grid {
+      display: grid;
+      gap: 3px;
+    }
+
+    .piece-cell {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+    }
+
+    .piece-cell.empty { background: transparent; }
+
+    #overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #000a;
+      z-index: 10;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #overlay.show { display: flex; }
+
+    #overlay-box {
+      background: #16213e;
+      border-radius: 20px;
+      padding: 32px 40px;
+      text-align: center;
+      box-shadow: 0 8px 40px #000a;
+      max-width: 320px;
+    }
+
+    #overlay-box h2 {
+      font-size: 2rem;
+      color: #f0c040;
+      margin-bottom: 8px;
+    }
+
+    #overlay-box p {
+      color: #ccc;
+      margin-bottom: 20px;
+      font-size: 1rem;
+    }
+
+    button {
+      background: linear-gradient(135deg, #f0c040, #ff6b35);
+      border: none;
+      border-radius: 10px;
+      padding: 12px 28px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #1a1a2e;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.1s;
+      box-shadow: 0 4px 12px #f0c04044;
+    }
+
+    button:hover { transform: scale(1.05); box-shadow: 0 6px 18px #f0c04066; }
+
+    #level-up-msg {
+      position: fixed;
+      top: 30%;
+      left: 50%;
+      transform: translateX(-50%) scale(0);
+      background: #f0c040;
+      color: #1a1a2e;
+      font-size: 1.6rem;
+      font-weight: 800;
+      border-radius: 14px;
+      padding: 14px 32px;
+      z-index: 20;
+      pointer-events: none;
+      transition: transform 0.25s ease, opacity 0.25s;
+      opacity: 0;
+    }
+
+    #level-up-msg.show {
+      transform: translateX(-50%) scale(1);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Block Blast</h1>
+
+<div id="header">
+  <div class="stat-box">
+    <span class="stat-label">Punkte</span>
+    <span class="stat-value" id="score-display">0</span>
+  </div>
+  <div class="stat-box">
+    <span class="stat-label">Ziel</span>
+    <span class="stat-value" id="target-display">130</span>
+  </div>
+  <div class="stat-box">
+    <span class="stat-label">Level</span>
+    <span class="stat-value" id="level-display">1</span>
+  </div>
+  <div class="stat-box">
+    <span class="stat-label">Rekord</span>
+    <span class="stat-value" id="best-display">0</span>
+  </div>
+</div>
+
+<div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+
+<div id="board-wrap"><div id="board"></div></div>
+
+<div id="pieces-area"></div>
+
+<div id="overlay">
+  <div id="overlay-box">
+    <h2 id="overlay-title">Game Over</h2>
+    <p id="overlay-msg">Du hast 250 Punkte erreicht!</p>
+    <button id="overlay-btn">Weiterspielen</button>
+  </div>
+</div>
+
+<div id="level-up-msg" id="level-up-msg"></div>
+
+<script>
+const COLS = 8, ROWS = 8;
+const COLORS = ['#e74c3c','#f39c12','#2ecc71','#3498db','#9b59b6','#1abc9c','#e67e22','#e91e63'];
+
+const PIECES = [
+  [[1,1],[1,1]],
+  [[1,1,1]],
+  [[1],[1],[1]],
+  [[1,1,1],[0,1,0]],
+  [[1,0],[1,1],[0,1]],
+  [[0,1],[1,1],[1,0]],
+  [[1,1,1,1]],
+  [[1],[1],[1],[1]],
+  [[1,1],[1,0],[1,0]],
+  [[1,1],[0,1],[0,1]],
+  [[1,0],[1,1]],
+  [[0,1],[1,1]],
+  [[1,1,1],[1,0,0]],
+  [[1,1,1],[0,0,1]],
+  [[1]],
+  [[1,1]],
+  [[1],[1]],
+  [[1,1,1,1,1]],
+  [[1,1,1],[1,1,1]],
+];
+
+const TARGETS = [130,150,200,250,300,400,500,700,1000,1500,2000];
+
+let board = [], score = 0, target = 130, level = 1, bestScore = 0;
+let currentPieces = [], selectedPieceIndex = -1;
+let gameState = 'playing';
+
+function loadState() {
+  try {
+    const s = JSON.parse(localStorage.getItem('blockblast_state') || 'null');
+    if (s) {
+      score = s.score || 0;
+      target = s.target || 130;
+      level = s.level || 1;
+      board = s.board || makeEmptyBoard();
+      currentPieces = s.currentPieces || [];
+      bestScore = s.bestScore || 0;
+      if (board.length !== ROWS || board[0].length !== COLS) board = makeEmptyBoard();
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+function saveState() {
+  localStorage.setItem('blockblast_state', JSON.stringify({
+    score, target, level, board, currentPieces, bestScore
+  }));
+}
+
+function makeEmptyBoard() {
+  return Array.from({length: ROWS}, () => Array(COLS).fill(null));
+}
+
+function randomPiece() {
+  const shape = PIECES[Math.floor(Math.random() * PIECES.length)];
+  const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+  return { shape, color };
+}
+
+function spawnPieces() {
+  currentPieces = [randomPiece(), randomPiece(), randomPiece()];
+  selectedPieceIndex = -1;
+}
+
+function renderBoard() {
+  const boardEl = document.getElementById('board');
+  boardEl.style.gridTemplateColumns = `repeat(${COLS}, 40px)`;
+  boardEl.innerHTML = '';
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell' + (board[r][c] ? '' : ' empty');
+      if (board[r][c]) cell.style.background = board[r][c];
+      cell.dataset.r = r; cell.dataset.c = c;
+      cell.addEventListener('click', () => onCellClick(r, c));
+      boardEl.appendChild(cell);
+    }
+  }
+}
+
+function renderPieces() {
+  const area = document.getElementById('pieces-area');
+  area.innerHTML = '';
+  currentPieces.forEach((piece, i) => {
+    if (!piece) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'piece-container' + (i === selectedPieceIndex ? ' selected-piece' : '') + (piece.used ? ' used' : '');
+    const grid = document.createElement('div');
+    grid.className = 'piece-grid';
+    const rows = piece.shape.length;
+    const cols = Math.max(...piece.shape.map(r => r.length));
+    grid.style.gridTemplateColumns = `repeat(${cols}, 20px)`;
+    piece.shape.forEach(row => {
+      const paddedRow = [...row, ...Array(cols - row.length).fill(0)];
+      paddedRow.forEach(v => {
+        const c = document.createElement('div');
+        c.className = 'piece-cell' + (v ? '' : ' empty');
+        if (v) c.style.background = piece.color;
+        grid.appendChild(c);
+      });
+    });
+    wrap.appendChild(grid);
+    wrap.addEventListener('click', () => selectPiece(i));
+    area.appendChild(wrap);
+  });
+}
+
+function updateHUD() {
+  document.getElementById('score-display').textContent = score;
+  document.getElementById('target-display').textContent = target;
+  document.getElementById('level-display').textContent = level;
+  document.getElementById('best-display').textContent = bestScore;
+  const pct = Math.min(score / target * 100, 100);
+  document.getElementById('progress-bar').style.width = pct + '%';
+}
+
+function selectPiece(i) {
+  if (currentPieces[i] && !currentPieces[i].used) {
+    selectedPieceIndex = (selectedPieceIndex === i) ? -1 : i;
+    renderPieces();
+  }
+}
+
+function canPlace(shape, r, c) {
+  for (let dr = 0; dr < shape.length; dr++) {
+    for (let dc = 0; dc < shape[dr].length; dc++) {
+      if (!shape[dr][dc]) continue;
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return false;
+      if (board[nr][nc]) return false;
+    }
+  }
+  return true;
+}
+
+function placePiece(shape, color, r, c) {
+  for (let dr = 0; dr < shape.length; dr++) {
+    for (let dc = 0; dc < shape[dr].length; dc++) {
+      if (shape[dr][dc]) board[r + dr][c + dc] = color;
+    }
+  }
+}
+
+function clearLines() {
+  let cleared = 0;
+  const toRemove = new Set();
+
+  for (let r = 0; r < ROWS; r++) {
+    if (board[r].every(c => c !== null)) {
+      for (let c = 0; c < COLS; c++) toRemove.add(`${r},${c}`);
+      cleared++;
+    }
+  }
+  for (let c = 0; c < COLS; c++) {
+    if (board.every(row => row[c] !== null)) {
+      for (let r = 0; r < ROWS; r++) toRemove.add(`${r},${c}`);
+      cleared++;
+    }
+  }
+
+  if (toRemove.size > 0) {
+    toRemove.forEach(key => {
+      const [r, c] = key.split(',').map(Number);
+      board[r][c] = null;
+    });
+  }
+
+  return cleared;
+}
+
+function onCellClick(r, c) {
+  if (selectedPieceIndex < 0) return;
+  const piece = currentPieces[selectedPieceIndex];
+  if (!piece || piece.used) return;
+
+  if (!canPlace(piece.shape, r, c)) {
+    shakePiece(selectedPieceIndex);
+    return;
+  }
+
+  placePiece(piece.shape, piece.color, r, c);
+  let pts = piece.shape.flat().filter(Boolean).length;
+  const linesCleared = clearLines();
+  if (linesCleared > 0) {
+    pts += linesCleared * 20 + (linesCleared > 1 ? linesCleared * 10 : 0);
+  }
+  score += pts;
+  if (score > bestScore) bestScore = score;
+
+  currentPieces[selectedPieceIndex].used = true;
+  selectedPieceIndex = -1;
+
+  if (currentPieces.every(p => !p || p.used)) spawnPieces();
+
+  checkLevelUp();
+  updateHUD();
+  renderBoard();
+  renderPieces();
+  saveState();
+
+  if (isGameOver()) showGameOver();
+}
+
+function checkLevelUp() {
+  if (score >= target) {
+    const nextIdx = TARGETS.indexOf(target);
+    const nextTarget = nextIdx >= 0 && nextIdx + 1 < TARGETS.length
+      ? TARGETS[nextIdx + 1]
+      : target + 250;
+    target = nextTarget;
+    level++;
+    showLevelUpMsg(`Level ${level}! Ziel: ${target}`);
+  }
+}
+
+function showLevelUpMsg(text) {
+  const el = document.getElementById('level-up-msg');
+  el.textContent = text;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+function isGameOver() {
+  const remaining = currentPieces.filter(p => p && !p.used);
+  return remaining.length > 0 && remaining.every(p => !canPlaceAnywhere(p.shape));
+}
+
+function canPlaceAnywhere(shape) {
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      if (canPlace(shape, r, c)) return true;
+  return false;
+}
+
+function shakePiece(i) {
+  const pieces = document.querySelectorAll('.piece-container');
+  if (pieces[i]) {
+    pieces[i].style.animation = 'none';
+    pieces[i].style.transform = 'translateX(-6px)';
+    setTimeout(() => { pieces[i].style.transform = 'translateX(6px)'; }, 80);
+    setTimeout(() => { pieces[i].style.transform = ''; }, 160);
+  }
+}
+
+function showGameOver() {
+  gameState = 'gameover';
+  const overlay = document.getElementById('overlay');
+  document.getElementById('overlay-title').textContent = 'Game Over!';
+  document.getElementById('overlay-msg').textContent =
+    `Du hast ${score} Punkte erreicht!\nWeitermachen bei ${target}?`;
+  document.getElementById('overlay-btn').textContent = `Weiterspielen ab ${target}`;
+  overlay.classList.add('show');
+}
+
+document.getElementById('overlay-btn').addEventListener('click', () => {
+  document.getElementById('overlay').classList.remove('show');
+  board = makeEmptyBoard();
+  spawnPieces();
+  gameState = 'playing';
+  updateHUD();
+  renderBoard();
+  renderPieces();
+  saveState();
+});
+
+function init() {
+  const loaded = loadState();
+  if (!loaded || !currentPieces.length) {
+    board = makeEmptyBoard();
+    score = 0; target = TARGETS[0]; level = 1;
+    spawnPieces();
+  } else if (currentPieces.some(p => !p.shape)) {
+    spawnPieces();
+  }
+  updateHUD();
+  renderBoard();
+  renderPieces();
+}
+
+init();
+</script>
+</body>
+</html>
